@@ -1,12 +1,15 @@
 using System;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace UnityStandardAssets.Vehicles.Car
 {
     [RequireComponent(typeof (CarController))]
     public class CarAIControl : MonoBehaviour
     {
+       
         public enum BrakeCondition
         {
             NeverBrake,                 // the car simply accelerates at full throttle all the time.
@@ -38,6 +41,8 @@ namespace UnityStandardAssets.Vehicles.Car
         [SerializeField] private bool m_StopWhenTargetReached;                                    // should we stop driving when we reach the target?
         [SerializeField] private float m_ReachTargetThreshold = 2;                                // proximity to target to consider we 'reached' it, and stop driving.
 
+        [SerializeField] private float allowDist;//�ǉ�
+
         private float m_RandomPerlin;             // A random value for the car to base its wander on (so that AI cars don't all wander in the same pattern)
         private CarController m_CarController;    // Reference to actual car controller we are controlling
         private float m_AvoidOtherCarTime;        // time until which to avoid the car we recently collided with
@@ -45,6 +50,12 @@ namespace UnityStandardAssets.Vehicles.Car
         private float m_AvoidPathOffset;          // direction (-1 or 1) in which to offset path to avoid other car, whilst avoiding
         private Rigidbody m_Rigidbody;
 
+        /// <summary>
+        /// この辺のフィールドも新しい
+        /// </summary>
+        string carNameInFront;
+        int carNum = 0;
+        GameObject goOfCarInFront;
 
         private void Awake()
         {
@@ -55,16 +66,36 @@ namespace UnityStandardAssets.Vehicles.Car
             m_RandomPerlin = Random.value*100;
 
             m_Rigidbody = GetComponent<Rigidbody>();
+
+
+            //この辺を新しく実装
+            GameObject carGameObject = GameObject.Find("CarObject");
+            foreach (Transform transform in carGameObject.transform) {
+                carNum++;
+            }
+            //先頭の車は関係なし
+            if (this.transform.name != "CarWaypointBased0") {
+                GetCarNameInFront();
+                goOfCarInFront = GameObject.Find(carNameInFront);
+            }
+            
+
+   
+
         }
 
 
         private void FixedUpdate()
         {
+            if (this.transform.name != "CarWaypointBased0") { //先頭車は関係なし
+                GetDistance();
+            }
+
             if (m_Target == null || !m_Driving)
             {
                 // Car should not be moving,
                 // use handbrake to stop
-                m_CarController.Move(0, 0, -1f, 1f);
+                m_CarController.Move(0.1f, 0.1f, -1f, 1f); //(0, 0, -1f, 1f)
             }
             else
             {
@@ -192,9 +223,12 @@ namespace UnityStandardAssets.Vehicles.Car
 
                     // but who's in front?...
                     if (Vector3.Angle(transform.forward, otherAI.transform.position - transform.position) < 90)
+                    //if (Vector3.Angle(transform.forward, otherAI.transform.position - transform.position) < 120 
+                    //    && Vector3.Angle(transform.forward, otherAI.transform.position - transform.position) > 70) 
                     {
                         // the other ai is in front, so it is only good manners that we ought to brake...
                         m_AvoidOtherCarSlowdown = 0.5f;
+
                     }
                     else
                     {
@@ -217,5 +251,50 @@ namespace UnityStandardAssets.Vehicles.Car
             m_Target = target;
             m_Driving = true;
         }
+
+        //ここから下は新しく実装したコード
+        private void GetDistance() {
+            float dist;
+            dist = Vector3.Distance(goOfCarInFront.transform.position, this.transform.position);
+            //Debug.Log(dist);
+            //一定距離を保つためには近づきすぎ
+            if (dist < allowDist + 0.6f) {
+                m_AvoidOtherCarTime = Time.time + 1;
+                //Debug.Log(goOfCarInFront.transform.name + " <<< " + this.transform.name);
+                //Debug.Log(this.transform.name + "is near!!");
+                m_AvoidOtherCarSlowdown = 0.7f;
+
+                //以下２行は色を変更するためのコード
+                //Debug.Log(this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material);
+                //this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material.SetColor("SkyCarBodyGrey", Color.yellow);
+            }
+            //かなり近づいている
+            else if (dist < 4.0f) {
+                m_AvoidOtherCarTime = Time.time + 1;
+                m_AvoidOtherCarSlowdown = 0.5f;
+                //this.transform.FindChild("SkyCarBody").GetComponent<Renderer>().material.color = Color.red;
+
+            }
+            //離れている
+            else if (dist > allowDist + 5.0f) {
+                //Debug.Log("����Ă�");
+                m_AvoidOtherCarTime = Time.time + 1;
+                m_AvoidOtherCarSlowdown = 1.1f; 
+                //this.transform.FindChild("SkyCarBody").GetComponent<Renderer>().material.color = Color.blue;
+            }
+            else {
+                //this.transform.FindChild("SkyCarBody").GetComponent<Renderer>().material.color = Color.gray;
+                //m_AvoidOtherCarTime = Time.time + 1;
+                //m_AvoidOtherCarSlowdown = 1;
+            }
+        }
+        private void GetCarNameInFront() {
+            for( int i = 1; i <= carNum; i++ ) {
+                if ( this.transform.name == "CarWaypointBased" + i) {
+                    carNameInFront = "CarWaypointBased" + ( i - 1 );
+                }
+            }
+        }
+
     }
 }
