@@ -6,7 +6,7 @@ public class GetSpeed : MonoBehaviour {
     private Rigidbody _rigidbody;
 	// Use this for initialization
 	void Start () {
-        GameObject carObject = GameObject.Find("CarWaypointBased0");
+        GameObject carObject = GameObject.Find("Car1");
         _rigidbody = carObject.GetComponent<Rigidbody>();
 	}
 	

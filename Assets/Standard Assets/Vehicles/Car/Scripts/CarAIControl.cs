@@ -41,7 +41,7 @@ namespace UnityStandardAssets.Vehicles.Car
         [SerializeField] private bool m_StopWhenTargetReached;                                    // should we stop driving when we reach the target?
         [SerializeField] private float m_ReachTargetThreshold = 2;                                // proximity to target to consider we 'reached' it, and stop driving.
 
-        [SerializeField] private float allowDist;//�ǉ�
+        [SerializeField] [Range(5, 50)] public float allowDist = 10;//�ǉ�
 
         private float m_RandomPerlin;             // A random value for the car to base its wander on (so that AI cars don't all wander in the same pattern)
         private CarController m_CarController;    // Reference to actual car controller we are controlling
@@ -56,6 +56,11 @@ namespace UnityStandardAssets.Vehicles.Car
         string carNameInFront;
         int carNum = 0;
         GameObject goOfCarInFront;
+        Material colMatG;
+        Material colMatY;
+        Material colMatR;
+        Material colMatB;
+
 
         private void Awake()
         {
@@ -74,20 +79,23 @@ namespace UnityStandardAssets.Vehicles.Car
                 carNum++;
             }
             //先頭の車は関係なし
-            if (this.transform.name != "CarWaypointBased0") {
+            if (this.transform.name != "Car1") {
                 GetCarNameInFront();
                 goOfCarInFront = GameObject.Find(carNameInFront);
             }
-            
 
-   
-
+            //車の色の初期設定
+            colMatG = Resources.Load("ColorOfCar/Grey") as Material;
+            colMatY = Resources.Load("ColorOfCar/Yellow") as Material;
+            colMatR = Resources.Load("ColorOfCar/Red") as Material;
+            colMatB = Resources.Load("ColorOfCar/Blue") as Material;
+            this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material = colMatG;
         }
 
 
         private void FixedUpdate()
         {
-            if (this.transform.name != "CarWaypointBased0") { //先頭車は関係なし
+            if (this.transform.name != "Car1") { //先頭車は関係なし
                 GetDistance();
             }
 
@@ -95,7 +103,7 @@ namespace UnityStandardAssets.Vehicles.Car
             {
                 // Car should not be moving,
                 // use handbrake to stop
-                m_CarController.Move(0.1f, 0.1f, -1f, 1f); //(0, 0, -1f, 1f)
+                m_CarController.Move(0, 0, -1f, 1f);
             }
             else
             {
@@ -227,7 +235,7 @@ namespace UnityStandardAssets.Vehicles.Car
                     //    && Vector3.Angle(transform.forward, otherAI.transform.position - transform.position) > 70) 
                     {
                         // the other ai is in front, so it is only good manners that we ought to brake...
-                        m_AvoidOtherCarSlowdown = 0.5f;
+                        m_AvoidOtherCarSlowdown = 0.05f;
 
                     }
                     else
@@ -253,48 +261,49 @@ namespace UnityStandardAssets.Vehicles.Car
         }
 
         //ここから下は新しく実装したコード
+        //距離を計測して、速度を調整
         private void GetDistance() {
+            float near = allowDist*1.4f; //車の原点(中心)同士の距離なので、車間距離に直す
+            float tooNear = 6.0f;
+            float notNear = allowDist*1.6f + 5.0f;
             float dist;
             dist = Vector3.Distance(goOfCarInFront.transform.position, this.transform.position);
             //Debug.Log(dist);
             //一定距離を保つためには近づきすぎ
-            if (dist < allowDist + 0.6f) {
+            if ( dist < near && dist > tooNear ) {
                 m_AvoidOtherCarTime = Time.time + 1;
                 //Debug.Log(goOfCarInFront.transform.name + " <<< " + this.transform.name);
                 //Debug.Log(this.transform.name + "is near!!");
-                m_AvoidOtherCarSlowdown = 0.7f;
-
-                //以下２行は色を変更するためのコード
-                //Debug.Log(this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material);
-                //this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material.SetColor("SkyCarBodyGrey", Color.yellow);
+                m_AvoidOtherCarSlowdown = 0.8f;
+                //以下1行は色を変更するためのコード
+                this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material = colMatY;
             }
             //かなり近づいている
-            else if (dist < 4.0f) {
+            //--
+            else if (dist <= tooNear) {
                 m_AvoidOtherCarTime = Time.time + 1;
-                m_AvoidOtherCarSlowdown = 0.5f;
-                //this.transform.FindChild("SkyCarBody").GetComponent<Renderer>().material.color = Color.red;
-
+                m_AvoidOtherCarSlowdown = 0.3f;
+                this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material = colMatR;
             }
             //離れている
-            else if (dist > allowDist + 5.0f) {
-                //Debug.Log("����Ă�");
+            else if (dist > notNear) {
                 m_AvoidOtherCarTime = Time.time + 1;
-                m_AvoidOtherCarSlowdown = 1.1f; 
-                //this.transform.FindChild("SkyCarBody").GetComponent<Renderer>().material.color = Color.blue;
+                m_AvoidOtherCarSlowdown = 1.1f;
+                this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material = colMatB;
             }
             else {
+                this.gameObject.transform.Find("SkyCar/SkyCarBody").gameObject.GetComponent<Renderer>().material = colMatG;
                 //this.transform.FindChild("SkyCarBody").GetComponent<Renderer>().material.color = Color.gray;
                 //m_AvoidOtherCarTime = Time.time + 1;
                 //m_AvoidOtherCarSlowdown = 1;
             }
         }
         private void GetCarNameInFront() {
-            for( int i = 1; i <= carNum; i++ ) {
-                if ( this.transform.name == "CarWaypointBased" + i) {
-                    carNameInFront = "CarWaypointBased" + ( i - 1 );
+            for( int i = 2; i <= carNum+1; i++ ) {
+                if ( this.transform.name == "Car" + i) {
+                    carNameInFront = "Car" + ( i - 1 );
                 }
             }
         }
-
     }
 }
