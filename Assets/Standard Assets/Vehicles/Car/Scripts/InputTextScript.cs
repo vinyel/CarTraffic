@@ -20,6 +20,9 @@ public class InputTextScript : MonoBehaviour {
         if (this.transform.name == "InputFieldD") {
             inputField.text = carGameObject.GetComponent<CarAIControl>().allowDist.ToString();
         }
+        else if (this.transform.name == "InputFieldS") {
+            inputField.text = carGameObject.GetComponent<CarController>().m_Topspeed.ToString();
+        }
 
     }
 	
@@ -36,6 +39,9 @@ public class InputTextScript : MonoBehaviour {
         if (this.transform.name == "InputFieldD") {
             carGameObject.GetComponent<CarAIControl>().allowDist = float.Parse(inputValue);
         }
+        else if (this.transform.name == "InputFieldS") {
+            carGameObject.GetComponent<CarController>().m_Topspeed = float.Parse(inputValue);
+        }
 
         //Debug.Log(inputValue);
 
@@ -48,6 +54,9 @@ public class InputTextScript : MonoBehaviour {
 
         if (this.transform.name == "InputFieldD") {
             inputField.text = carGameObject.GetComponent<CarAIControl>().allowDist.ToString();
+        }
+        else if (this.transform.name == "InputFieldS") {
+            inputField.text = carGameObject.GetComponent<CarController>().m_Topspeed.ToString();
         }
     }
 }
